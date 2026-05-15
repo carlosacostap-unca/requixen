@@ -5,6 +5,8 @@ export function serverEnv() {
     pocketBaseProjectsCollection: process.env.POCKETBASE_PROJECTS_COLLECTION || "requixen_projects",
     pocketBaseFilesCollection: process.env.POCKETBASE_FILES_COLLECTION || "requixen_files",
     pocketBaseAreasCollection: process.env.POCKETBASE_AREAS_COLLECTION || "requixen_areas",
+    pocketBaseInstitutionalTemplatesCollection:
+      process.env.POCKETBASE_INSTITUTIONAL_TEMPLATES_COLLECTION || "requixen_institutional_templates",
     pocketBaseElicitationSessionsCollection:
       process.env.POCKETBASE_ELICITATION_SESSIONS_COLLECTION || "requixen_elicitation_sessions",
     pocketBaseElicitationMessagesCollection:
@@ -48,6 +50,7 @@ export function integrationStatus() {
       projects: env.pocketBaseProjectsCollection,
       files: env.pocketBaseFilesCollection,
       areas: env.pocketBaseAreasCollection,
+      institutionalTemplates: env.pocketBaseInstitutionalTemplatesCollection,
       elicitationSessions: env.pocketBaseElicitationSessionsCollection,
       elicitationMessages: env.pocketBaseElicitationMessagesCollection,
       elicitationContributions: env.pocketBaseElicitationContributionsCollection,

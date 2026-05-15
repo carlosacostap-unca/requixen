@@ -1,6 +1,16 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("API authentication boundaries", () => {
+  test("expone plantillas institucionales de fallback sin PocketBase", async ({ request }) => {
+    const response = await request.get("/api/institutional-templates");
+    expect(response.ok()).toBeTruthy();
+
+    const body = (await response.json()) as { source?: string; templates?: Array<{ id?: string; title?: string }> };
+    expect(body.source).toBe("fallback");
+    expect(body.templates?.map((template) => template.id)).toContain("school-health-survey");
+    expect(body.templates?.map((template) => template.id)).toContain("public-works-claims");
+  });
+
   test("rechaza endpoints sensibles sin bearer token", async ({ request }) => {
     const checks = [
       request.get("/api/auth/user-directory"),

@@ -108,6 +108,18 @@ const collectionDefinitions = {
     field.text("sentAt"),
     field.text("respondedAt"),
   ],
+  [env.POCKETBASE_INSTITUTIONAL_TEMPLATES_COLLECTION || "requixen_institutional_templates"]: [
+    field.text("templateId"),
+    field.text("title"),
+    field.editor("description"),
+    field.text("projectName"),
+    field.editor("problem"),
+    field.json("institutionalRequest"),
+    field.editor("mediatorPrompt"),
+    field.json("blocks"),
+    field.text("confirmationArea"),
+    field.bool("active"),
+  ],
   [env.POCKETBASE_ARTIFACTS_COLLECTION || "requixen_artifacts"]: [
     field.text("projectId"),
     field.text("artifactId"),

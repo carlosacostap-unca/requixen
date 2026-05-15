@@ -1,4 +1,15 @@
-import type { AttachedDocument, MunicipalArea, Project, ProjectParticipant, ProjectRole, User, UserRole } from "@/lib/requixen/types";
+import type {
+  AttachedDocument,
+  GuidedInterviewBlock,
+  InstitutionalInterviewTemplate,
+  InstitutionalRequest,
+  MunicipalArea,
+  Project,
+  ProjectParticipant,
+  ProjectRole,
+  User,
+  UserRole,
+} from "@/lib/requixen/types";
 import { forbidden, unauthorized, upstreamError } from "./api-errors";
 import { serverEnv } from "./env";
 
@@ -40,6 +51,20 @@ type PocketBaseAreaRecord = {
   parentAreaName?: string;
   created?: string;
   updated?: string;
+};
+
+type PocketBaseInstitutionalTemplateRecord = {
+  id: string;
+  templateId?: string;
+  title?: string;
+  description?: string;
+  projectName?: string;
+  problem?: string;
+  institutionalRequest?: InstitutionalRequest | string;
+  mediatorPrompt?: string;
+  blocks?: GuidedInterviewBlock[] | string;
+  confirmationArea?: string;
+  active?: boolean;
 };
 
 let cachedAdminToken = "";
@@ -254,6 +279,20 @@ export async function listPocketBaseAreas(token: string) {
     ...area,
     parentAreaName: area.parentAreaName || areas.find((item) => item.id === area.parentAreaId)?.name || "",
   }));
+}
+
+export async function listPocketBaseInstitutionalTemplates(token: string) {
+  const env = serverEnv();
+  await requireAnyRole(token, ["admin", "analyst", "stakeholder", "validator"]);
+  const result = await pocketBaseRequest<PocketBaseListResponse<PocketBaseInstitutionalTemplateRecord>>(
+    `/api/collections/${env.pocketBaseInstitutionalTemplatesCollection}/records?perPage=200&sort=title`,
+    {},
+    token,
+  );
+
+  return result.items
+    .map(mapInstitutionalTemplateRecord)
+    .filter((template) => template.active !== false && template.blocks.length > 0);
 }
 
 export async function createPocketBaseArea(
@@ -549,6 +588,94 @@ function mapAreaRecord(record: PocketBaseAreaRecord): MunicipalArea {
   };
 }
 
+function mapInstitutionalTemplateRecord(record: PocketBaseInstitutionalTemplateRecord): InstitutionalInterviewTemplate {
+  const templateId = record.templateId || record.id;
+  const institutionalRequest = normalizeInstitutionalRequestRecord(record.institutionalRequest) ?? {
+    templateId,
+    templateName: record.title || templateId,
+    requestingArea: "",
+    receivingArea: "Direccion de Modernizacion",
+    contactPerson: "",
+    requestedAction: "",
+    targetPopulation: "",
+    urgency: "medium",
+  };
+
+  return {
+    id: templateId,
+    title: record.title || institutionalRequest.templateName || "Plantilla institucional",
+    description: record.description || "",
+    projectName: record.projectName || record.title || "Nuevo pedido institucional",
+    problem: record.problem || "",
+    institutionalRequest: {
+      ...institutionalRequest,
+      templateId,
+      templateName: institutionalRequest.templateName || record.title || templateId,
+    },
+    mediatorPrompt: record.mediatorPrompt || "",
+    blocks: normalizeGuidedInterviewBlocks(record.blocks),
+    confirmationArea: record.confirmationArea || institutionalRequest.requestingArea || "el area solicitante",
+    active: record.active !== false,
+  };
+}
+
+function normalizeGuidedInterviewBlocks(value: unknown): GuidedInterviewBlock[] {
+  const rawBlocks = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? parseJsonArray(value)
+      : [];
+  const blocks: GuidedInterviewBlock[] = [];
+
+  for (const item of rawBlocks) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+
+    const block = item as Record<string, unknown>;
+    const id = String(block.id ?? block.title ?? "");
+    const title = String(block.title ?? "");
+
+    if (!id || !title) {
+      continue;
+    }
+
+    blocks.push({
+      id,
+      title,
+      goal: String(block.goal ?? ""),
+      prompt: String(block.prompt ?? ""),
+      questions: normalizeStringArray(block.questions),
+      summaryLabel: String(block.summaryLabel ?? title),
+      pendingText: String(block.pendingText ?? "Pendiente de completar."),
+      keywords: normalizeStringArray(block.keywords),
+    });
+  }
+
+  return blocks;
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const parsed = parseJsonArray(value);
+
+    if (parsed.length > 0) {
+      return parsed.map((item) => String(item).trim()).filter(Boolean);
+    }
+
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
 function hasRole(user: User, role: UserRole) {
   if (role === "admin") {
     return user.isAdmin;
@@ -722,5 +849,14 @@ function parseJsonObject(value: string) {
       : null;
   } catch {
     return null;
+  }
+}
+
+function parseJsonArray(value: string) {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
   }
 }

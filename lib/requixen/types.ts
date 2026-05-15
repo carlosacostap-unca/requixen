@@ -26,6 +26,30 @@ export interface InstitutionalRequest {
   urgency: "low" | "medium" | "high";
 }
 
+export interface GuidedInterviewBlock {
+  id: string;
+  title: string;
+  goal: string;
+  prompt: string;
+  questions: string[];
+  summaryLabel: string;
+  pendingText: string;
+  keywords: string[];
+}
+
+export interface InstitutionalInterviewTemplate {
+  id: string;
+  title: string;
+  description: string;
+  projectName: string;
+  problem: string;
+  institutionalRequest: InstitutionalRequest;
+  mediatorPrompt: string;
+  blocks: GuidedInterviewBlock[];
+  confirmationArea: string;
+  active?: boolean;
+}
+
 export interface Layer {
   id: LayerId;
   phase: string;
