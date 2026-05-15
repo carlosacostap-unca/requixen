@@ -1,0 +1,253 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f4f7f5;
+  --foreground: #17201f;
+  --font-requixen-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-requixen-mono: "Cascadia Mono", Consolas, monospace;
+
+  --rx-bg: #f4f7f5;
+  --rx-bg-strong: #e8efeb;
+  --rx-surface: #ffffff;
+  --rx-surface-soft: #f8faf8;
+  --rx-surface-muted: #edf3ef;
+  --rx-ink: #17201f;
+  --rx-ink-soft: #35433f;
+  --rx-muted: #66756f;
+  --rx-border: #dbe5df;
+  --rx-border-strong: #bdcbc5;
+  --rx-primary: #123c3a;
+  --rx-primary-hover: #0d2f2d;
+  --rx-primary-soft: #dcefed;
+  --rx-accent: #0e8f7c;
+  --rx-accent-soft: #dcf6f1;
+  --rx-warning: #8a5b12;
+  --rx-warning-soft: #fff2cc;
+  --rx-danger: #a13b52;
+  --rx-danger-soft: #fde7ed;
+  --rx-success: #217453;
+  --rx-success-soft: #ddf4e9;
+  --rx-shadow-sm: 0 1px 2px rgb(18 60 58 / 0.05);
+  --rx-shadow-md: 0 12px 32px rgb(18 60 58 / 0.1);
+  --rx-ring: 0 0 0 3px rgb(14 143 124 / 0.18);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-requixen-sans);
+  --font-mono: var(--font-requixen-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-requixen-sans), Arial, Helvetica, sans-serif;
+}
+
+button,
+select {
+  font: inherit;
+}
+
+@layer base {
+  html {
+    background: var(--rx-bg);
+  }
+
+  body {
+    min-height: 100vh;
+    background:
+      linear-gradient(180deg, rgb(244 247 245 / 0.96), rgb(244 247 245 / 1)),
+      repeating-linear-gradient(90deg, rgb(18 60 58 / 0.035) 0 1px, transparent 1px 72px),
+      repeating-linear-gradient(180deg, rgb(18 60 58 / 0.025) 0 1px, transparent 1px 72px);
+  }
+
+  ::selection {
+    background: var(--rx-primary-soft);
+    color: var(--rx-primary);
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    transition:
+      border-color 150ms ease,
+      background-color 150ms ease,
+      color 150ms ease,
+      box-shadow 150ms ease,
+      transform 150ms ease;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none;
+    box-shadow: var(--rx-ring);
+  }
+
+  button:not(:disabled):active {
+    transform: translateY(1px);
+  }
+}
+
+@layer components {
+  .requixen-app {
+    background:
+      linear-gradient(180deg, rgb(244 247 245 / 0.82), rgb(244 247 245 / 0.98)),
+      linear-gradient(90deg, rgb(18 60 58 / 0.055), transparent 26%, rgb(14 143 124 / 0.04));
+    color: var(--rx-ink);
+  }
+
+  .rx-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin-inline: -0.5rem;
+    border: 1px solid rgb(219 229 223 / 0.78);
+    border-radius: 8px;
+    background: rgb(255 255 255 / 0.82);
+    padding: 0.75rem;
+    box-shadow: var(--rx-shadow-sm);
+    backdrop-filter: blur(18px);
+  }
+
+  .rx-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .rx-brand-mark {
+    display: grid;
+    height: 2.25rem;
+    width: 2.25rem;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--rx-primary);
+    color: white;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+  }
+
+  .rx-card {
+    border: 1px solid var(--rx-border);
+    border-radius: 8px;
+    background: var(--rx-surface);
+    box-shadow: var(--rx-shadow-sm);
+  }
+
+  .rx-card-interactive:hover {
+    border-color: var(--rx-border-strong);
+    box-shadow: var(--rx-shadow-md);
+  }
+
+  .rx-room-shell {
+    border-color: var(--rx-border);
+    background: var(--rx-surface);
+    box-shadow: var(--rx-shadow-md);
+  }
+
+  .rx-message-author {
+    background: var(--rx-primary);
+  }
+
+  .rx-message-ai {
+    border: 1px solid var(--rx-border);
+    background: var(--rx-surface);
+    box-shadow: var(--rx-shadow-sm);
+  }
+}
+
+@layer utilities {
+  .bg-\[\#f6f7f4\],
+  .bg-\[\#f8faf7\] {
+    background-color: transparent !important;
+  }
+
+  .bg-white {
+    background-color: var(--rx-surface) !important;
+  }
+
+  .bg-slate-50 {
+    background-color: var(--rx-surface-soft) !important;
+  }
+
+  .bg-slate-100,
+  .bg-slate-200 {
+    background-color: var(--rx-surface-muted) !important;
+  }
+
+  .bg-slate-950 {
+    background-color: var(--rx-primary) !important;
+  }
+
+  .hover\:bg-slate-800:hover {
+    background-color: var(--rx-primary-hover) !important;
+  }
+
+  .border-slate-100,
+  .border-slate-200,
+  .border-slate-300 {
+    border-color: var(--rx-border) !important;
+  }
+
+  .hover\:border-slate-400:hover,
+  .hover\:border-slate-500:hover {
+    border-color: var(--rx-border-strong) !important;
+  }
+
+  .text-slate-950,
+  .text-slate-900 {
+    color: var(--rx-ink) !important;
+  }
+
+  .text-slate-800,
+  .text-slate-700 {
+    color: var(--rx-ink-soft) !important;
+  }
+
+  .text-slate-600,
+  .text-slate-500 {
+    color: var(--rx-muted) !important;
+  }
+
+  .focus\:border-slate-700:focus,
+  .focus\:border-slate-900:focus,
+  .focus\:border-slate-600:focus {
+    border-color: var(--rx-accent) !important;
+  }
+
+  .bg-emerald-100 {
+    background-color: var(--rx-success-soft) !important;
+  }
+
+  .text-emerald-800 {
+    color: var(--rx-success) !important;
+  }
+
+  .bg-amber-50,
+  .bg-amber-100 {
+    background-color: var(--rx-warning-soft) !important;
+  }
+
+  .text-amber-800,
+  .text-amber-950 {
+    color: var(--rx-warning) !important;
+  }
+
+  .bg-rose-50,
+  .bg-rose-100 {
+    background-color: var(--rx-danger-soft) !important;
+  }
+
+  .text-rose-700,
+  .text-rose-900 {
+    color: var(--rx-danger) !important;
+  }
+}
