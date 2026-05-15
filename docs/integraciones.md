@@ -8,6 +8,8 @@ Configura manualmente `C:\Proyectos\requixen\.env.local`:
 
 ```txt
 POCKETBASE_URL=https://tu-pocketbase.example.com
+POCKETBASE_ADMIN_EMAIL=admin@tu-pocketbase.example.com
+POCKETBASE_ADMIN_PASSWORD=...
 POCKETBASE_USERS_COLLECTION=users
 POCKETBASE_PROJECTS_COLLECTION=requixen_projects
 POCKETBASE_AREAS_COLLECTION=requixen_areas
@@ -193,6 +195,39 @@ Secretaria de Salud -> Direccion de Modernizacion -> Mediador IA -> Analista -> 
 ```
 
 La ficha de solicitud se guarda en `project.institutionalRequest` y puede usar la plantilla `Relevamiento sanitario escolar`, pensada para describir una accion de relevamiento sanitario a alumnos de escuelas municipales. Esa metadata se incluye en el mensaje inicial del Mediador para que la conversacion arranque con el contexto institucional correcto.
+
+Las plantillas se leen desde la coleccion configurable:
+
+```txt
+POCKETBASE_INSTITUTIONAL_TEMPLATES_COLLECTION=requixen_institutional_templates
+```
+
+Campos esperados:
+
+- `templateId`: texto estable, por ejemplo `school-health-survey`
+- `title`: texto
+- `description`: texto largo
+- `projectName`: texto
+- `problem`: texto largo
+- `institutionalRequest`: JSON
+- `mediatorPrompt`: texto largo
+- `blocks`: JSON con los bloques de entrevista
+- `confirmationArea`: texto
+- `active`: booleano
+
+Para crear o actualizar la coleccion y sembrar las plantillas iniciales:
+
+```bash
+npm run seed:institutional-templates
+```
+
+El script hace upsert por `templateId`. Si la coleccion no existe todavia, ejecuta primero:
+
+```bash
+node tools/ensure-pocketbase-schema.mjs
+```
+
+Si PocketBase no tiene plantillas cargadas o la coleccion no esta disponible, Requixen usa las plantillas semilla locales como fallback.
 
 Pendiente para el siguiente corte:
 

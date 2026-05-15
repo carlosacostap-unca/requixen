@@ -11,6 +11,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
+    "seed:institutional-templates": "node tools/seed-institutional-templates.mjs",
     "openspec:list": "openspec list",
     "openspec:specs": "openspec list --specs",
     "openspec:validate": "openspec validate --all --strict --no-interactive"
