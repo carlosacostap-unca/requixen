@@ -37,8 +37,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Deploy on Dokploy / Nixpacks
 
-This app uses Next.js 16 and pnpm 11, so the production builder must use Node.js 22 or newer.
-The repository includes `.nvmrc` and `package.json#engines` so Nixpacks can select a compatible runtime.
+This app uses Next.js 16, so the production builder must use Node.js 22.
+The repository includes `.nvmrc`, `package.json#engines`, and `nixpacks.toml` so Nixpacks can select a compatible runtime and use pnpm 9 without Corepack downgrades/upgrades.
 
 Recommended Dokploy commands:
 
@@ -48,4 +48,4 @@ pnpm run build
 pnpm run start
 ```
 
-If Dokploy still selects Node 18, set `NIXPACKS_NODE_VERSION=22` in the application environment.
+If Dokploy still selects a different Node version, set `NIXPACKS_NODE_VERSION=22` in the application environment and redeploy without cache.

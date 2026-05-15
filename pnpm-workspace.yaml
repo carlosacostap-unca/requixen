@@ -1,6 +1,7 @@
+packages:
+  - .
+
 allowBuilds:
   '@fission-ai/openspec': true
   sharp: true
   unrs-resolver: true
-overrides:
-  postcss@8.4.31: 8.5.10
