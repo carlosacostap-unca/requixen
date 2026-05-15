@@ -4955,25 +4955,37 @@ function WorkspaceView({
   }
 
   if (runtime.activeLayerId === "mediator") {
+    const isStakeholderMediator = currentUser.role === "stakeholder";
+
     return (
       <div className="min-h-screen bg-[#f6f7f4]">
-        <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 lg:px-6">
-          <TopBar
-            locale={locale}
-            currentUser={currentUser}
-            roleProfile={roleProfile}
-            onRoleChange={onRoleChange}
-            onSignOut={onSignOut}
-          />
-          <div className="mt-5">
-            <button
-              type="button"
-              onClick={onBack}
-              className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              {t(locale, "backToPhases")}
-            </button>
-          </div>
+        <div
+          className={
+            isStakeholderMediator
+              ? "mx-auto flex min-h-screen w-full flex-col"
+              : "mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 lg:px-6"
+          }
+        >
+          {!isStakeholderMediator && (
+            <>
+              <TopBar
+                locale={locale}
+                currentUser={currentUser}
+                roleProfile={roleProfile}
+                onRoleChange={onRoleChange}
+                onSignOut={onSignOut}
+              />
+              <div className="mt-5">
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  {t(locale, "backToPhases")}
+                </button>
+              </div>
+            </>
+          )}
           <StakeholderElicitationAssistant
             locale={locale}
             currentUser={currentUser}
@@ -5006,6 +5018,8 @@ function WorkspaceView({
             onCreateRequirementCandidate={createRequirementCandidateFromContributions}
             onCloseClarification={closeClarificationRequest}
             onCreateCandidateFromClarification={createRequirementCandidateFromClarification}
+            onBackToPhases={onBack}
+            onSignOut={onSignOut}
           />
         </div>
       </div>
@@ -5453,6 +5467,8 @@ function StakeholderElicitationAssistant({
   onCreateRequirementCandidate,
   onCloseClarification,
   onCreateCandidateFromClarification,
+  onBackToPhases,
+  onSignOut,
 }: {
   locale: Locale;
   currentUser: User;
@@ -5491,6 +5507,8 @@ function StakeholderElicitationAssistant({
   ) => void;
   onCloseClarification: (clarificationId: string) => void | Promise<void>;
   onCreateCandidateFromClarification: (clarificationId: string) => void;
+  onBackToPhases?: () => void;
+  onSignOut?: () => void;
 }) {
   const [showContext, setShowContext] = useState(false);
   const [contextInput, setContextInput] = useState("");
@@ -5674,6 +5692,37 @@ function StakeholderElicitationAssistant({
         onCreateRequirementCandidate={onCreateRequirementCandidate}
         onCloseClarification={onCloseClarification}
         onCreateCandidateFromClarification={onCreateCandidateFromClarification}
+      />
+    );
+  }
+
+  if (isStakeholder) {
+    return (
+      <StakeholderImmersiveElicitation
+        locale={locale}
+        project={project}
+        room={room}
+        activeSession={activeSession}
+        messages={visibleMessages}
+        attachments={visibleAttachments}
+        input={composerInput}
+        guidedInterviewTemplate={guidedInterviewTemplate}
+        guidedInterviewBlocks={guidedInterviewBlocks}
+        structuredRequestSummary={structuredRequestSummary}
+        pendingClarifications={pendingClarifications}
+        isSending={isSending}
+        isVoiceRecording={isVoiceRecording}
+        isVoiceTranscribing={isVoiceTranscribing}
+        voiceError={voiceError}
+        onInputChange={setComposerInput}
+        onUsePrompt={setComposerInput}
+        onSend={sendComposerMessage}
+        onFiles={onFiles}
+        onVoice={() => onVoice(appendComposerTranscript)}
+        onMessageStreamed={onMessageStreamed}
+        onAnswerClarification={onAnswerClarification}
+        onBackToPhases={onBackToPhases}
+        onSignOut={onSignOut}
       />
     );
   }
@@ -6073,6 +6122,298 @@ function StakeholderElicitationAssistant({
           canSynthesize={canSynthesize}
         />
       )}
+    </section>
+  );
+}
+
+function StakeholderImmersiveElicitation({
+  locale,
+  project,
+  room,
+  activeSession,
+  messages,
+  attachments,
+  input,
+  guidedInterviewTemplate,
+  guidedInterviewBlocks,
+  structuredRequestSummary,
+  pendingClarifications,
+  isSending,
+  isVoiceRecording,
+  isVoiceTranscribing,
+  voiceError,
+  onInputChange,
+  onUsePrompt,
+  onSend,
+  onFiles,
+  onVoice,
+  onMessageStreamed,
+  onAnswerClarification,
+  onBackToPhases,
+  onSignOut,
+}: {
+  locale: Locale;
+  project: Project;
+  room: ElicitationRoomState;
+  activeSession: ElicitationChatSession;
+  messages: ElicitationChatMessage[];
+  attachments: AttachedDocument[];
+  input: string;
+  guidedInterviewTemplate?: InstitutionalInterviewTemplate;
+  guidedInterviewBlocks: GuidedInterviewBlock[];
+  structuredRequestSummary: string;
+  pendingClarifications: ClarificationRequest[];
+  isSending: boolean;
+  isVoiceRecording: boolean;
+  isVoiceTranscribing: boolean;
+  voiceError: string;
+  onInputChange: (value: string) => void;
+  onUsePrompt: (value: string) => void;
+  onSend: () => void | Promise<void>;
+  onFiles: (files: FileList | null) => void | Promise<void>;
+  onVoice: () => void;
+  onMessageStreamed: (messageId: string) => void;
+  onAnswerClarification: (clarificationId: string, response: string) => void | Promise<void>;
+  onBackToPhases?: () => void;
+  onSignOut?: () => void;
+}) {
+  const completedBlockIds = new Set(
+    guidedInterviewBlocks
+      .filter((block) =>
+        room.contributions.some(
+          (contribution) =>
+            contribution.authorRole !== "mediator-ai" && contributionMatchesKeywords(contribution, block.keywords),
+        ),
+      )
+      .map((block) => block.id),
+  );
+  const activeBlock =
+    guidedInterviewBlocks.find((block) => !completedBlockIds.has(block.id)) ?? guidedInterviewBlocks[0];
+  const completionLabel =
+    guidedInterviewBlocks.length > 0
+      ? `${completedBlockIds.size}/${guidedInterviewBlocks.length}`
+      : `${room.contributions.length}`;
+  const latestMediatorMessage = [...messages].reverse().find((message) => message.authorRole === "mediator-ai");
+  const conversation = messages.filter((message) => message.id !== latestMediatorMessage?.id).slice(-3);
+  const mainQuestion =
+    activeBlock?.questions[0] ??
+    "Contame una escena concreta del proceso: quien participa, que necesita lograr y donde se complica.";
+
+  return (
+    <section className="rx-stakeholder-immersive min-h-screen">
+      <header className="rx-stakeholder-topbar">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase text-slate-500">Requixen</p>
+          <p className="truncate text-sm font-semibold text-slate-950">{project.name}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {onBackToPhases && (
+            <button
+              type="button"
+              onClick={onBackToPhases}
+              className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              {t(locale, "backToPhases")}
+            </button>
+          )}
+          {onSignOut && (
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="h-9 rounded-md bg-slate-950 px-3 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              Salir
+            </button>
+          )}
+        </div>
+      </header>
+
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 pb-8 pt-5 sm:px-6 lg:px-8">
+        <div className="rx-stakeholder-progress" aria-label="Avance de entrevista">
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+            Avance {completionLabel}
+          </span>
+          {guidedInterviewBlocks.map((block) => {
+            const isComplete = completedBlockIds.has(block.id);
+            const isActive = block.id === activeBlock?.id;
+
+            return (
+              <span
+                key={block.id}
+                className={`rx-stakeholder-step ${isComplete ? "is-complete" : ""} ${isActive ? "is-active" : ""}`}
+              >
+                {block.title}
+              </span>
+            );
+          })}
+        </div>
+
+        <main className="grid flex-1 content-center gap-7 py-8">
+          <section className="rx-stakeholder-focus">
+            <p className="text-sm font-semibold uppercase text-emerald-700">Mediador IA</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-normal text-slate-950 sm:text-5xl">
+              {guidedInterviewTemplate?.title || "Entrevista guiada"}
+            </h1>
+            {activeBlock && (
+              <div className="mt-6 max-w-3xl">
+                <h2 className="text-2xl font-semibold tracking-normal text-slate-950">{activeBlock.title}</h2>
+                <p className="rx-stakeholder-question mt-3 text-lg leading-8 text-slate-700">{mainQuestion}</p>
+              </div>
+            )}
+            {latestMediatorMessage && (
+              <div className="rx-stakeholder-current mt-6 max-w-3xl">
+                <StreamingMarkdownMessage
+                  key={`${latestMediatorMessage.id}-${latestMediatorMessage.body}`}
+                  messageId={latestMediatorMessage.id}
+                  body={localizedMessageBody(latestMediatorMessage.body, locale)}
+                  enabled={latestMediatorMessage.stream === true}
+                  onComplete={onMessageStreamed}
+                />
+              </div>
+            )}
+          </section>
+
+          {pendingClarifications.length > 0 && (
+            <StakeholderClarificationInbox
+              clarifications={pendingClarifications}
+              onAnswer={onAnswerClarification}
+              isSending={isSending}
+            />
+          )}
+
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="grid gap-3">
+              {conversation.map((message) => {
+                const isAuthor = message.authorRole !== "mediator-ai";
+                return (
+                  <article
+                    key={message.id}
+                    className={`rx-stakeholder-bubble ${isAuthor ? "is-author" : "is-ai"}`}
+                  >
+                    <p className="text-xs font-semibold uppercase opacity-70">{displayMessageAuthor(message)}</p>
+                    <StreamingMarkdownMessage
+                      key={`${message.id}-${message.body}`}
+                      messageId={message.id}
+                      body={localizedMessageBody(message.body, locale)}
+                      enabled={message.stream === true}
+                      onComplete={onMessageStreamed}
+                    />
+                  </article>
+                );
+              })}
+            </div>
+
+            <aside className="rx-stakeholder-summary">
+              <h3 className="text-sm font-semibold text-slate-950">Solicitud relevada</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                El resumen se arma con lo que vas contando y queda listo para que el analista trabaje requisitos.
+              </p>
+              {structuredRequestSummary ? (
+                <div className="mt-3 max-h-56 overflow-auto text-slate-700">
+                  <MarkdownMessage body={structuredRequestSummary} />
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-slate-500">Todavia no hay aportes suficientes para sintetizar.</p>
+              )}
+            </aside>
+          </section>
+
+          <footer className="rx-stakeholder-composer">
+            {(isVoiceRecording || isVoiceTranscribing) && (
+              <div className="rx-stakeholder-voice-state">
+                <span className="rx-stakeholder-voice-dot" />
+                {isVoiceRecording ? t(locale, "recordingVoice") : t(locale, "transcribingVoice")}
+              </div>
+            )}
+            {voiceError && (
+              <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950">
+                {voiceError}
+              </div>
+            )}
+            {attachments.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {attachments.map((attachment) => (
+                  <span key={attachment.id} className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600">
+                    {attachment.name} - {fileSizeLabel(attachment.size)}
+                    <DocumentIndexingBadge document={attachment} locale={locale} compact />
+                  </span>
+                ))}
+              </div>
+            )}
+            <label className="sr-only" htmlFor="stakeholder-immersive-message">
+              {t(locale, "chatMessage")}
+            </label>
+            <textarea
+              id="stakeholder-immersive-message"
+              value={input}
+              onChange={(event) => onInputChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" || event.ctrlKey || event.nativeEvent.isComposing) {
+                  return;
+                }
+
+                event.preventDefault();
+                void onSend();
+              }}
+              disabled={isSending}
+              rows={4}
+              placeholder="Escribi como lo contarias en una reunion. Tambien podes dictarlo."
+              className="w-full resize-none bg-transparent px-1 py-1 text-lg leading-8 text-slate-950 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:text-slate-400"
+            />
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <label
+                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                  title={t(locale, "attachToChat")}
+                  aria-label={t(locale, "attachToChat")}
+                >
+                  <PaperclipIcon />
+                  <input type="file" multiple className="hidden" onChange={(event) => onFiles(event.target.files)} />
+                </label>
+                <button
+                  type="button"
+                  onClick={onVoice}
+                  disabled={isVoiceTranscribing}
+                  title={isVoiceRecording ? t(locale, "stopRecording") : t(locale, "voiceInput")}
+                  aria-label={isVoiceRecording ? t(locale, "stopRecording") : t(locale, "voiceInput")}
+                  className={`rx-stakeholder-mic ${isVoiceRecording ? "is-recording" : ""}`}
+                >
+                  <MicIcon />
+                </button>
+                {activeBlock && (
+                  <button
+                    type="button"
+                    onClick={() => onUsePrompt(activeBlock.prompt)}
+                    className="h-10 rounded-md border border-emerald-200 bg-white px-3 text-sm font-semibold text-emerald-900 hover:bg-emerald-50"
+                  >
+                    Usar esta guia
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={onSend}
+                disabled={!input.trim() || isSending}
+                title={isSending ? t(locale, "processingRequest") : t(locale, "sendToMediator")}
+                aria-label={isSending ? t(locale, "processingRequest") : t(locale, "sendToMediator")}
+                className="flex h-11 min-w-11 items-center justify-center rounded-full bg-slate-950 px-4 text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                {isSending ? (
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                    {t(locale, "processingRequest")}
+                  </span>
+                ) : (
+                  <SendIcon />
+                )}
+              </button>
+            </div>
+            <p className="mt-3 text-xs text-slate-500">
+              Chat activo: {activeSession.title}. La IA convierte tus respuestas en insumos para requisitos.
+            </p>
+          </footer>
+        </main>
+      </div>
     </section>
   );
 }

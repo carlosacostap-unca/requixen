@@ -21,6 +21,18 @@ const adminUser = {
   roles: ["admin", "analyst"],
 };
 
+const stakeholderUser = {
+  id: "user-stakeholder",
+  name: "Marina Quiroga",
+  email: "stakeholder@requixen.local",
+  isAdmin: false,
+  role: "stakeholder",
+  roles: ["stakeholder"],
+  organization: "Secretaria de Salud",
+  areaId: "area-salud",
+  areaName: "Secretaria de Salud",
+};
+
 const modernizationArea = {
   id: "area-modernizacion",
   name: "Direccion de Modernizacion",
@@ -30,6 +42,48 @@ const modernizationArea = {
   parentAreaName: "Municipalidad",
   createdAt: "2026-05-15",
   updatedAt: "2026-05-15",
+};
+
+const schoolHealthProject = {
+  id: "project-school-health-e2e",
+  name: "Relevamiento sanitario escolar municipal",
+  domain: "Salud publica",
+  municipality: "San Fernando del Valle de Catamarca",
+  summary:
+    "La Secretaria de Salud solicita soporte para relevar datos sanitarios de alumnos de escuelas municipales.",
+  transcript:
+    "La Secretaria de Salud necesita organizar un relevamiento sanitario a alumnos de escuelas municipales.",
+  status: "elicitation",
+  createdAt: "2026-05-15",
+  updatedAt: "2026-05-15",
+  documents: [],
+  participants: [
+    {
+      userId: analystUser.id,
+      name: analystUser.name,
+      email: analystUser.email,
+      role: "analyst",
+      areaId: analystUser.areaId,
+      areaName: analystUser.areaName,
+    },
+    {
+      userId: stakeholderUser.id,
+      name: stakeholderUser.name,
+      email: stakeholderUser.email,
+      role: "stakeholder",
+      areaId: stakeholderUser.areaId,
+      areaName: stakeholderUser.areaName,
+    },
+  ],
+  institutionalRequest: {
+    templateId: "school-health-survey",
+    requestingArea: "Secretaria de Salud",
+    receivingArea: "Direccion de Modernizacion",
+    contactPerson: "Directora de Salud Escolar",
+    requestedAction: "Llevar a cabo una accion de relevamiento sanitario a alumnos de escuelas municipales.",
+    targetPopulation: "Alumnos de escuelas municipales",
+    urgency: "high",
+  },
 };
 
 test("guia la solicitud de relevamiento sanitario escolar hasta la ficha relevada", async ({ page }) => {
@@ -71,7 +125,7 @@ test("guia la solicitud de relevamiento sanitario escolar hasta la ficha relevad
   await expect(page.getByRole("heading", { name: "Objetivo sanitario" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Solicitud relevada" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Usar este bloque" }).click();
+  await page.getByRole("button", { name: "Usar esta guia" }).click();
   await expect(page.getByLabel("Mensaje")).toHaveValue(/objetivo sanitario/i);
 
   await page.getByLabel("Mensaje").fill(
@@ -90,6 +144,38 @@ test("guia la solicitud de relevamiento sanitario escolar hasta la ficha relevad
       "Objetivo sanitario: Objetivo sanitario: detectar alumnos con controles incompletos de vacunacion y priorizar seguimiento por escuela.",
       { exact: true },
     ),
+  ).toBeVisible();
+});
+
+test("ofrece una entrevista inmersiva y minimalista para stakeholders", async ({ page }) => {
+  await mockRequixenApi(page, stakeholderUser, [schoolHealthProject]);
+
+  await page.goto("/");
+  await page.getByPlaceholder("Email").fill("stakeholder@requixen.local");
+  await page.getByPlaceholder("Password").fill("demo-password");
+  await page.getByRole("button", { name: "Ingresar" }).click();
+
+  await page.getByText("Relevamiento sanitario escolar municipal").click();
+  await page.getByRole("button", { name: "Entrar a la fase" }).click();
+
+  await expect(page.getByRole("heading", { name: "Relevamiento sanitario escolar" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Objetivo sanitario" })).toBeVisible();
+  await expect(page.getByText("Mediador IA")).toBeVisible();
+  await expect(page.getByText("Avance 0/5")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Solicitud relevada" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Nuevo chat" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Usar esta guia" }).click();
+  await expect(page.getByLabel("Mensaje")).toHaveValue(/objetivo sanitario/i);
+
+  await page.getByLabel("Mensaje").fill(
+    "Objetivo sanitario: relevar controles de vacunacion y derivaciones pendientes por escuela.",
+  );
+  await page.getByRole("button", { name: "Enviar al Mediador" }).click();
+  await expect(
+    page.getByText("Objetivo sanitario: relevar controles de vacunacion y derivaciones pendientes por escuela.", {
+      exact: true,
+    }),
   ).toBeVisible();
 });
 
@@ -126,9 +212,9 @@ test("permite iniciar otro caso institucional con bloques propios", async ({ pag
   await page.getByRole("button", { name: "Entrar a la fase" }).click();
 
   await expect(page.getByRole("heading", { name: "Gestion de reclamos urbanos" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Ingreso del reclamo" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Inspeccion y cuadrillas" })).toBeVisible();
-  await expect(page.getByText("Estado de completitud: 0/5 bloques con algun aporte inicial.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ingreso del reclamo" })).toBeVisible();
+  await expect(page.getByText("Avance 0/5")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Solicitud relevada" })).toBeVisible();
 });
 
 test("permite administrar plantillas institucionales con acciones basicas", async ({ page }) => {
@@ -153,7 +239,7 @@ test("permite administrar plantillas institucionales con acciones basicas", asyn
   await expect(page.getByText("Relevamiento sanitario escolar copia").first()).toBeVisible();
 });
 
-async function mockRequixenApi(page: Page, user = analystUser) {
+async function mockRequixenApi(page: Page, user = analystUser, projects: unknown[] = []) {
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -168,11 +254,11 @@ async function mockRequixenApi(page: Page, user = analystUser) {
     }
 
     if (path === "/api/projects" && request.method() === "GET") {
-      return json(route, { projects: [] });
+      return json(route, { projects });
     }
 
     if (path === "/api/users") {
-      return json(route, { users: [user] });
+      return json(route, { users: [analystUser, stakeholderUser, user] });
     }
 
     if (path === "/api/areas") {

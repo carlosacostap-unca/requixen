@@ -34,3 +34,18 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Deploy on Dokploy / Nixpacks
+
+This app uses Next.js 16 and pnpm 11, so the production builder must use Node.js 22 or newer.
+The repository includes `.nvmrc` and `package.json#engines` so Nixpacks can select a compatible runtime.
+
+Recommended Dokploy commands:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm run build
+pnpm run start
+```
+
+If Dokploy still selects Node 18, set `NIXPACKS_NODE_VERSION=22` in the application environment.
