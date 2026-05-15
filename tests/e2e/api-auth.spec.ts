@@ -37,6 +37,12 @@ test.describe("API authentication boundaries", () => {
       request.post("/api/elicitation/clarifications", {
         data: { projectId: "municipal-complaints", sessionId: "session-1", clarification: {} },
       }),
+      request.post("/api/institutional-templates", {
+        data: { sourceTemplateId: "school-health-survey" },
+      }),
+      request.patch("/api/institutional-templates", {
+        data: { templateId: "school-health-survey", active: false },
+      }),
     ];
 
     const responses = await Promise.all(checks);

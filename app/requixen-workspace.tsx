@@ -45,7 +45,7 @@ import type {
   UserRole,
 } from "@/lib/requixen/types";
 
-type View = "projects" | "create" | "project" | "workspace" | "users" | "areas";
+type View = "projects" | "create" | "project" | "workspace" | "users" | "areas" | "templates";
 
 type IntegrationMode = "demo" | "pocketbase";
 
@@ -1266,6 +1266,84 @@ export default function RequixenWorkspace() {
     }
   }
 
+  async function toggleInstitutionalTemplateActive(templateId: string, active: boolean) {
+    const applyLocalUpdate = () => {
+      setInstitutionalTemplates((current) =>
+        current.map((template) => (template.id === templateId ? { ...template, active } : template)),
+      );
+    };
+
+    if (!authToken || !currentUserIsAdmin) {
+      applyLocalUpdate();
+      return;
+    }
+
+    try {
+      const result = await apiJson<{ template?: InstitutionalInterviewTemplate }>("/api/institutional-templates", {
+        method: "PATCH",
+        token: authToken,
+        body: { templateId, active },
+      });
+
+      if (result.template) {
+        setInstitutionalTemplates((current) =>
+          current.map((template) => (template.id === templateId ? result.template! : template)),
+        );
+        return;
+      }
+    } catch {
+      // Keep the admin screen usable in demo/fallback mode.
+    }
+
+    applyLocalUpdate();
+  }
+
+  async function duplicateInstitutionalTemplate(templateId: string) {
+    const source = institutionalTemplates.find((template) => template.id === templateId);
+
+    if (!source) {
+      return;
+    }
+
+    const localCopy = () => {
+      const copyId = `${source.id}-copy-${Date.now()}`;
+      const copy: InstitutionalInterviewTemplate = {
+        ...source,
+        id: copyId,
+        title: `${source.title} copia`,
+        institutionalRequest: {
+          ...source.institutionalRequest,
+          templateId: copyId,
+          templateName: `${source.institutionalRequest.templateName || source.title} copia`,
+        },
+        active: true,
+      };
+      setInstitutionalTemplates((current) => [...current, copy].sort((a, b) => a.title.localeCompare(b.title)));
+    };
+
+    if (!authToken || !currentUserIsAdmin) {
+      localCopy();
+      return;
+    }
+
+    try {
+      const result = await apiJson<{ template?: InstitutionalInterviewTemplate }>("/api/institutional-templates", {
+        method: "POST",
+        token: authToken,
+        body: { sourceTemplateId: templateId },
+      });
+
+      if (result.template) {
+        setInstitutionalTemplates((current) => [...current, result.template!].sort((a, b) => a.title.localeCompare(b.title)));
+        return;
+      }
+    } catch {
+      // Keep the admin screen usable in demo/fallback mode.
+    }
+
+    localCopy();
+  }
+
   function updateRuntime(projectId: string, updater: (current: ProjectRuntime) => ProjectRuntime) {
     setRuntimeByProject((current) => ({
       ...current,
@@ -1640,6 +1718,7 @@ export default function RequixenWorkspace() {
           onCreate={startProjectCreation}
           onManageUsers={() => setView("users")}
           onManageAreas={() => setView("areas")}
+          onManageTemplates={() => setView("templates")}
           onOpen={openProject}
           onRoleChange={switchActiveRole}
           onSignOut={() => {
@@ -1680,6 +1759,26 @@ export default function RequixenWorkspace() {
           areas={municipalAreas}
           onBack={() => setView("projects")}
           onCreateArea={createMunicipalArea}
+          onRoleChange={switchActiveRole}
+          onSignOut={() => {
+            setCurrentUser(null);
+            setAuthToken(null);
+            setIntegrationMode("demo");
+            setView("projects");
+          }}
+        />
+      )}
+
+      {view === "templates" && (
+        <AdminTemplatesView
+          locale={locale}
+          currentUser={currentUser}
+          roleProfile={currentRoleProfile}
+          templates={institutionalTemplates}
+          integrationMode={integrationMode}
+          onBack={() => setView("projects")}
+          onToggleTemplate={toggleInstitutionalTemplateActive}
+          onDuplicateTemplate={duplicateInstitutionalTemplate}
           onRoleChange={switchActiveRole}
           onSignOut={() => {
             setCurrentUser(null);
@@ -1845,6 +1944,7 @@ function ProjectsView({
   onCreate,
   onManageUsers,
   onManageAreas,
+  onManageTemplates,
   onOpen,
   onRoleChange,
   onSignOut,
@@ -1858,6 +1958,7 @@ function ProjectsView({
   onCreate: () => void;
   onManageUsers: () => void;
   onManageAreas: () => void;
+  onManageTemplates: () => void;
   onOpen: (projectId: string) => void;
   onRoleChange: (role: UserRole) => void;
   onSignOut: () => void;
@@ -1908,6 +2009,13 @@ function ProjectsView({
                   className="h-10 rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                 >
                   {t(locale, "manageAreas")}
+                </button>
+                <button
+                  type="button"
+                  onClick={onManageTemplates}
+                  className="h-10 rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  Gestionar plantillas
                 </button>
               </>
             )}
@@ -2367,6 +2475,190 @@ function AreaTreeItem({ area, areas, depth = 0 }: { area: MunicipalArea; areas: 
   );
 }
 
+function AdminTemplatesView({
+  locale,
+  currentUser,
+  roleProfile,
+  templates,
+  integrationMode,
+  onBack,
+  onToggleTemplate,
+  onDuplicateTemplate,
+  onRoleChange,
+  onSignOut,
+}: {
+  locale: Locale;
+  currentUser: User;
+  roleProfile: RoleProfile;
+  templates: InstitutionalInterviewTemplate[];
+  integrationMode: IntegrationMode;
+  onBack: () => void;
+  onToggleTemplate: (templateId: string, active: boolean) => void | Promise<void>;
+  onDuplicateTemplate: (templateId: string) => void | Promise<void>;
+  onRoleChange: (role: UserRole) => void;
+  onSignOut: () => void;
+}) {
+  const [selectedTemplateId, setSelectedTemplateId] = useState(templates[0]?.id ?? "");
+  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
+  const activeCount = templates.filter((template) => template.active !== false).length;
+
+  return (
+    <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 lg:px-6">
+      <TopBar
+        locale={locale}
+        currentUser={currentUser}
+        roleProfile={roleProfile}
+        onRoleChange={onRoleChange}
+        onSignOut={onSignOut}
+      />
+      <div className="mt-5">
+        <button
+          type="button"
+          onClick={onBack}
+          className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+        >
+          {t(locale, "backToProjects")}
+        </button>
+      </div>
+
+      <section className="rx-card mt-5 p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase text-slate-500">Plantillas institucionales</p>
+            <h1 className="mt-1 text-3xl font-semibold text-slate-950">Gestionar plantillas</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Revisa las guias que usa el Mediador para adaptar la entrevista al tipo de pedido municipal.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+              {activeCount}/{templates.length} activas
+            </span>
+            <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+              {integrationMode === "pocketbase" ? "PocketBase" : "Fallback local"}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
+          <div className="grid content-start gap-2">
+            {templates.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">
+                Todavia no hay plantillas disponibles.
+              </p>
+            ) : (
+              templates.map((template) => (
+                <button
+                  key={template.id}
+                  type="button"
+                  onClick={() => setSelectedTemplateId(template.id)}
+                  className={`rounded-lg border p-3 text-left ${
+                    template.id === selectedTemplate?.id
+                      ? "border-slate-950 bg-slate-950 text-white"
+                      : "border-slate-200 bg-white text-slate-800 hover:border-slate-400"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold">{template.title}</p>
+                      <p className={`mt-1 text-xs ${template.id === selectedTemplate?.id ? "text-white/70" : "text-slate-500"}`}>
+                        {template.id}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-md px-2 py-1 text-xs font-semibold ${
+                        template.active === false
+                          ? "bg-amber-100 text-amber-800"
+                          : template.id === selectedTemplate?.id
+                            ? "bg-white/15 text-white"
+                            : "bg-emerald-100 text-emerald-800"
+                      }`}
+                    >
+                      {template.active === false ? "Inactiva" : "Activa"}
+                    </span>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+
+          {selectedTemplate && (
+            <article className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-slate-500">{selectedTemplate.id}</p>
+                  <h2 className="mt-1 text-2xl font-semibold text-slate-950">{selectedTemplate.title}</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{selectedTemplate.description}</p>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onDuplicateTemplate(selectedTemplate.id)}
+                    className="h-9 rounded-md border border-slate-300 px-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  >
+                    Duplicar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onToggleTemplate(selectedTemplate.id, selectedTemplate.active === false)}
+                    className={`h-9 rounded-md px-3 text-sm font-semibold ${
+                      selectedTemplate.active === false
+                        ? "bg-slate-950 text-white hover:bg-slate-800"
+                        : "border border-amber-200 text-amber-800 hover:bg-amber-50"
+                    }`}
+                  >
+                    {selectedTemplate.active === false ? "Activar" : "Desactivar"}
+                  </button>
+                </div>
+              </div>
+
+              <dl className="mt-5 grid gap-3 md:grid-cols-2">
+                <TemplateFact label="Proyecto sugerido" value={selectedTemplate.projectName} />
+                <TemplateFact label="Area solicitante" value={selectedTemplate.institutionalRequest.requestingArea || "Sin definir"} />
+                <TemplateFact label="Area receptora" value={selectedTemplate.institutionalRequest.receivingArea || "Modernizacion"} />
+                <TemplateFact label="Confirmacion" value={selectedTemplate.confirmationArea} />
+              </dl>
+
+              <section className="mt-5">
+                <h3 className="text-sm font-semibold uppercase text-slate-500">Bloques de entrevista</h3>
+                <div className="mt-3 grid gap-3">
+                  {selectedTemplate.blocks.map((block, index) => (
+                    <div key={block.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-950 text-xs font-semibold text-white">
+                          {index + 1}
+                        </span>
+                        <h4 className="text-sm font-semibold text-slate-950">{block.title}</h4>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{block.goal}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {block.keywords.map((keyword) => (
+                          <span key={keyword} className="rounded-md bg-white px-2 py-1 text-xs text-slate-600">
+                            {keyword}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </article>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TemplateFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <dt className="text-xs font-semibold uppercase text-slate-500">{label}</dt>
+      <dd className="mt-1 text-sm font-medium text-slate-900">{value}</dd>
+    </div>
+  );
+}
+
 function ProjectParticipantsSelector({
   locale,
   participants,
@@ -2740,7 +3032,7 @@ function CreateProjectView({
         <InstitutionalRequestIntake
           request={draft.institutionalRequest}
           onChange={onInstitutionalRequestChange}
-          templates={templates}
+          templates={templates.filter((template) => template.active !== false)}
           onApplyTemplate={onApplyInstitutionalTemplate}
         />
       );

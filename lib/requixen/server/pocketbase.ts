@@ -290,9 +290,67 @@ export async function listPocketBaseInstitutionalTemplates(token: string) {
     token,
   );
 
-  return result.items
-    .map(mapInstitutionalTemplateRecord)
-    .filter((template) => template.active !== false && template.blocks.length > 0);
+  return result.items.map(mapInstitutionalTemplateRecord).filter((template) => template.blocks.length > 0);
+}
+
+export async function updatePocketBaseInstitutionalTemplate(
+  templateId: string,
+  data: Partial<Pick<InstitutionalInterviewTemplate, "active">>,
+  token: string,
+) {
+  const env = serverEnv();
+  await requireAdminUser(token);
+  const record = await findPocketBaseInstitutionalTemplateRecord(templateId, token);
+
+  if (!record) {
+    throw upstreamError(`Institutional template ${templateId} was not found.`);
+  }
+
+  const updated = await pocketBaseRequest<PocketBaseInstitutionalTemplateRecord>(
+    `/api/collections/${env.pocketBaseInstitutionalTemplatesCollection}/records/${record.id}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        ...(data.active !== undefined ? { active: data.active } : {}),
+      }),
+    },
+    token,
+  );
+
+  return mapInstitutionalTemplateRecord(updated);
+}
+
+export async function duplicatePocketBaseInstitutionalTemplate(templateId: string, token: string) {
+  const env = serverEnv();
+  await requireAdminUser(token);
+  const record = await findPocketBaseInstitutionalTemplateRecord(templateId, token);
+
+  if (!record) {
+    throw upstreamError(`Institutional template ${templateId} was not found.`);
+  }
+
+  const source = mapInstitutionalTemplateRecord(record);
+  const copyId = `${source.id}-copy-${Date.now()}`;
+  const created = await pocketBaseRequest<PocketBaseInstitutionalTemplateRecord>(
+    `/api/collections/${env.pocketBaseInstitutionalTemplatesCollection}/records`,
+    {
+      method: "POST",
+      body: JSON.stringify(institutionalTemplateRecordPayload({
+        ...source,
+        id: copyId,
+        title: `${source.title} copia`,
+        institutionalRequest: {
+          ...source.institutionalRequest,
+          templateId: copyId,
+          templateName: `${source.institutionalRequest.templateName || source.title} copia`,
+        },
+        active: true,
+      })),
+    },
+    token,
+  );
+
+  return mapInstitutionalTemplateRecord(created);
 }
 
 export async function createPocketBaseArea(
@@ -617,6 +675,41 @@ function mapInstitutionalTemplateRecord(record: PocketBaseInstitutionalTemplateR
     confirmationArea: record.confirmationArea || institutionalRequest.requestingArea || "el area solicitante",
     active: record.active !== false,
   };
+}
+
+function institutionalTemplateRecordPayload(template: InstitutionalInterviewTemplate) {
+  return {
+    templateId: template.id,
+    title: template.title,
+    description: template.description,
+    projectName: template.projectName,
+    problem: template.problem,
+    institutionalRequest: {
+      ...template.institutionalRequest,
+      templateId: template.id,
+      templateName: template.institutionalRequest.templateName || template.title,
+    },
+    mediatorPrompt: template.mediatorPrompt,
+    blocks: template.blocks,
+    confirmationArea: template.confirmationArea,
+    active: template.active !== false,
+  };
+}
+
+async function findPocketBaseInstitutionalTemplateRecord(templateId: string, token: string) {
+  const env = serverEnv();
+  const filter = encodeURIComponent(`templateId = "${escapePocketBaseFilterValue(templateId)}"`);
+  const result = await pocketBaseRequest<PocketBaseListResponse<PocketBaseInstitutionalTemplateRecord>>(
+    `/api/collections/${env.pocketBaseInstitutionalTemplatesCollection}/records?perPage=1&filter=${filter}`,
+    {},
+    token,
+  );
+
+  return result.items[0] ?? null;
+}
+
+function escapePocketBaseFilterValue(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function normalizeGuidedInterviewBlocks(value: unknown): GuidedInterviewBlock[] {

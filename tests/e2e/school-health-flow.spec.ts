@@ -12,6 +12,15 @@ const analystUser = {
   areaName: "Direccion de Modernizacion",
 };
 
+const adminUser = {
+  ...analystUser,
+  id: "user-admin",
+  email: "admin@requixen.local",
+  isAdmin: true,
+  role: "admin",
+  roles: ["admin", "analyst"],
+};
+
 const modernizationArea = {
   id: "area-modernizacion",
   name: "Direccion de Modernizacion",
@@ -122,7 +131,29 @@ test("permite iniciar otro caso institucional con bloques propios", async ({ pag
   await expect(page.getByText("Estado de completitud: 0/5 bloques con algun aporte inicial.")).toBeVisible();
 });
 
-async function mockRequixenApi(page: Page) {
+test("permite administrar plantillas institucionales con acciones basicas", async ({ page }) => {
+  await mockRequixenApi(page, adminUser);
+
+  await page.goto("/");
+  await page.getByPlaceholder("Email").fill("admin@requixen.local");
+  await page.getByPlaceholder("Password").fill("demo-password");
+  await page.getByRole("button", { name: "Ingresar" }).click();
+
+  await expect(page.getByRole("button", { name: "Gestionar plantillas" })).toBeVisible();
+  await page.getByRole("button", { name: "Gestionar plantillas" }).click();
+
+  await expect(page.getByRole("heading", { name: "Gestionar plantillas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Relevamiento sanitario escolar" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Objetivo sanitario" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Desactivar" }).click();
+  await expect(page.getByRole("button", { name: "Activar" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Duplicar" }).click();
+  await expect(page.getByText("Relevamiento sanitario escolar copia").first()).toBeVisible();
+});
+
+async function mockRequixenApi(page: Page, user = analystUser) {
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -133,7 +164,7 @@ async function mockRequixenApi(page: Page) {
     }
 
     if (path === "/api/auth/login") {
-      return json(route, { token: "test-token", user: analystUser });
+      return json(route, { token: "test-token", user });
     }
 
     if (path === "/api/projects" && request.method() === "GET") {
@@ -141,7 +172,7 @@ async function mockRequixenApi(page: Page) {
     }
 
     if (path === "/api/users") {
-      return json(route, { users: [analystUser] });
+      return json(route, { users: [user] });
     }
 
     if (path === "/api/areas") {
