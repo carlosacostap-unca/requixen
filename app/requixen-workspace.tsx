@@ -119,6 +119,21 @@ interface GuidedInterviewBlock {
   goal: string;
   prompt: string;
   questions: string[];
+  summaryLabel: string;
+  pendingText: string;
+  keywords: string[];
+}
+
+interface InstitutionalInterviewTemplate {
+  id: string;
+  title: string;
+  description: string;
+  projectName: string;
+  problem: string;
+  institutionalRequest: InstitutionalRequest;
+  mediatorPrompt: string;
+  blocks: GuidedInterviewBlock[];
+  confirmationArea: string;
 }
 
 type ArtifactEditDraft = Pick<Artifact, "title" | "type" | "body" | "source" | "status" | "confidence"> & {
@@ -247,88 +262,203 @@ const blankInstitutionalRequest = (): InstitutionalRequest => ({
   urgency: "medium",
 });
 
-const schoolHealthSurveyTemplate: {
-  projectName: string;
-  problem: string;
-  institutionalRequest: InstitutionalRequest;
-  mediatorPrompt: string;
-} = {
-  projectName: "Relevamiento sanitario escolar municipal",
-  problem:
-    "La Secretaria de Salud solicita soporte a Modernizacion para relevar informacion sanitaria de alumnos de escuelas municipales y organizar el proceso, la carga de datos, las autorizaciones y los reportes esperados.",
-  institutionalRequest: {
-    templateId: "school-health-survey",
-    templateName: "Relevamiento sanitario escolar",
-    requestingArea: "Secretaria de Salud",
-    receivingArea: "Direccion de Modernizacion",
-    contactPerson: "Referente de Salud",
-    requestedAction: "Llevar a cabo una accion de relevamiento sanitario a alumnos de escuelas municipales.",
-    targetPopulation: "Alumnos de escuelas municipales",
-    urgency: "medium",
-  },
-  mediatorPrompt:
-    "La Secretaria de Salud necesita describir a un Mediador IA una accion de relevamiento sanitario escolar. Guiar la conversacion para entender objetivo sanitario, alumnos alcanzados, escuelas, datos a relevar, autorizaciones, responsables de carga, cronograma, reportes esperados, restricciones de privacidad y criterios de exito.",
-};
-
-const schoolHealthInterviewBlocks: GuidedInterviewBlock[] = [
+const institutionalInterviewTemplates: InstitutionalInterviewTemplate[] = [
   {
-    id: "objective",
-    title: "Objetivo sanitario",
-    goal: "Entender para que se hace el relevamiento y que decision deberia habilitar.",
-    prompt:
-      "Mediador, ayudame a precisar el objetivo sanitario del relevamiento escolar. Preguntame que problema queremos detectar, que decision espera tomar Salud y como sabremos que el relevamiento fue util.",
-    questions: [
-      "Que problema sanitario o necesidad concreta motiva el relevamiento?",
-      "Que decision espera tomar la Secretaria de Salud con los resultados?",
-      "Hay indicadores minimos que el relevamiento debe producir?",
+    id: "school-health-survey",
+    title: "Relevamiento sanitario escolar",
+    description:
+      "Para el caso donde Salud solicita a Modernizacion soporte para relevar informacion sanitaria de alumnos.",
+    projectName: "Relevamiento sanitario escolar municipal",
+    problem:
+      "La Secretaria de Salud solicita soporte a Modernizacion para relevar informacion sanitaria de alumnos de escuelas municipales y organizar el proceso, la carga de datos, las autorizaciones y los reportes esperados.",
+    institutionalRequest: {
+      templateId: "school-health-survey",
+      templateName: "Relevamiento sanitario escolar",
+      requestingArea: "Secretaria de Salud",
+      receivingArea: "Direccion de Modernizacion",
+      contactPerson: "Referente de Salud",
+      requestedAction: "Llevar a cabo una accion de relevamiento sanitario a alumnos de escuelas municipales.",
+      targetPopulation: "Alumnos de escuelas municipales",
+      urgency: "medium",
+    },
+    mediatorPrompt:
+      "La Secretaria de Salud necesita describir a un Mediador IA una accion de relevamiento sanitario escolar. Guiar la conversacion para entender objetivo sanitario, alumnos alcanzados, escuelas, datos a relevar, autorizaciones, responsables de carga, cronograma, reportes esperados, restricciones de privacidad y criterios de exito.",
+    confirmationArea: "Salud",
+    blocks: [
+      {
+        id: "objective",
+        title: "Objetivo sanitario",
+        goal: "Entender para que se hace el relevamiento y que decision deberia habilitar.",
+        prompt:
+          "Mediador, ayudame a precisar el objetivo sanitario del relevamiento escolar. Preguntame que problema queremos detectar, que decision espera tomar Salud y como sabremos que el relevamiento fue util.",
+        questions: [
+          "Que problema sanitario o necesidad concreta motiva el relevamiento?",
+          "Que decision espera tomar la Secretaria de Salud con los resultados?",
+          "Hay indicadores minimos que el relevamiento debe producir?",
+        ],
+        summaryLabel: "Objetivo sanitario",
+        pendingText: "Pendiente de precisar con Salud.",
+        keywords: ["objetivo", "problema", "detectar", "decision", "indicador"],
+      },
+      {
+        id: "population",
+        title: "Alumnos y escuelas",
+        goal: "Delimitar alcance, establecimientos, cursos, edades y criterios de inclusion.",
+        prompt:
+          "Mediador, guiame para delimitar poblacion y alcance: escuelas municipales, cursos, edades, criterios de inclusion/exclusion y volumen aproximado de alumnos.",
+        questions: [
+          "Que escuelas municipales entran en esta primera etapa?",
+          "Que cursos, edades o grupos de alumnos deben relevarse?",
+          "Hay casos que deban quedar fuera o tratarse por separado?",
+        ],
+        summaryLabel: "Alcance escolar",
+        pendingText: "Pendiente de definir escuelas, cursos y volumen.",
+        keywords: ["escuela", "alumno", "curso", "edad", "grado", "poblacion"],
+      },
+      {
+        id: "data",
+        title: "Datos a relevar",
+        goal: "Separar datos necesarios, datos sensibles y evidencia que debe quedar respaldada.",
+        prompt:
+          "Mediador, ayudame a listar los datos que Salud necesita relevar, separando datos personales, datos sanitarios, observaciones, adjuntos y campos que no deberian pedirse por privacidad.",
+        questions: [
+          "Que datos identificatorios son indispensables?",
+          "Que variables sanitarias se necesitan y cuales son opcionales?",
+          "Se necesita adjuntar constancias, fotos, autorizaciones o documentos?",
+        ],
+        summaryLabel: "Datos a relevar",
+        pendingText: "Pendiente de separar datos necesarios, sensibles y opcionales.",
+        keywords: ["dato", "sanitario", "campo", "formulario", "autorizacion", "privacidad"],
+      },
+      {
+        id: "operation",
+        title: "Operacion en territorio",
+        goal: "Aclarar responsables, autorizaciones, carga de datos y calendario operativo.",
+        prompt:
+          "Mediador, conversemos sobre la operacion: autorizaciones, responsables por escuela, quien carga datos, dispositivos disponibles, conectividad, cronograma y excepciones esperables.",
+        questions: [
+          "Quien autoriza y comunica el relevamiento a escuelas y familias?",
+          "Quienes cargan los datos y con que dispositivos o conectividad?",
+          "Que excepciones pueden ocurrir durante la jornada?",
+        ],
+        summaryLabel: "Operacion",
+        pendingText: "Pendiente de definir responsables, autorizaciones y cronograma.",
+        keywords: ["responsable", "cronograma", "carga", "dispositivo", "conectividad", "jornada"],
+      },
+      {
+        id: "outputs",
+        title: "Reportes y privacidad",
+        goal: "Definir reportes esperados, accesos, resguardo de datos y criterios de exito.",
+        prompt:
+          "Mediador, ayudame a cerrar la ficha del pedido: reportes esperados, destinatarios, niveles de acceso, resguardo de datos sensibles, alertas y criterios de exito.",
+        questions: [
+          "Que reportes necesita Salud y con que nivel de detalle?",
+          "Quien puede ver datos nominales y quien solo datos agregados?",
+          "Que criterios indicarian que el operativo fue exitoso?",
+        ],
+        summaryLabel: "Reportes y privacidad",
+        pendingText: "Pendiente de acordar reportes, accesos y resguardo.",
+        keywords: ["reporte", "informe", "alerta", "resultado", "acceso", "exito"],
+      },
     ],
   },
   {
-    id: "population",
-    title: "Alumnos y escuelas",
-    goal: "Delimitar alcance, establecimientos, cursos, edades y criterios de inclusion.",
-    prompt:
-      "Mediador, guiame para delimitar poblacion y alcance: escuelas municipales, cursos, edades, criterios de inclusion/exclusion y volumen aproximado de alumnos.",
-    questions: [
-      "Que escuelas municipales entran en esta primera etapa?",
-      "Que cursos, edades o grupos de alumnos deben relevarse?",
-      "Hay casos que deban quedar fuera o tratarse por separado?",
-    ],
-  },
-  {
-    id: "data",
-    title: "Datos a relevar",
-    goal: "Separar datos necesarios, datos sensibles y evidencia que debe quedar respaldada.",
-    prompt:
-      "Mediador, ayudame a listar los datos que Salud necesita relevar, separando datos personales, datos sanitarios, observaciones, adjuntos y campos que no deberian pedirse por privacidad.",
-    questions: [
-      "Que datos identificatorios son indispensables?",
-      "Que variables sanitarias se necesitan y cuales son opcionales?",
-      "Se necesita adjuntar constancias, fotos, autorizaciones o documentos?",
-    ],
-  },
-  {
-    id: "operation",
-    title: "Operacion en territorio",
-    goal: "Aclarar responsables, autorizaciones, carga de datos y calendario operativo.",
-    prompt:
-      "Mediador, conversemos sobre la operacion: autorizaciones, responsables por escuela, quien carga datos, dispositivos disponibles, conectividad, cronograma y excepciones esperables.",
-    questions: [
-      "Quien autoriza y comunica el relevamiento a escuelas y familias?",
-      "Quienes cargan los datos y con que dispositivos o conectividad?",
-      "Que excepciones pueden ocurrir durante la jornada?",
-    ],
-  },
-  {
-    id: "outputs",
-    title: "Reportes y privacidad",
-    goal: "Definir reportes esperados, accesos, resguardo de datos y criterios de exito.",
-    prompt:
-      "Mediador, ayudame a cerrar la ficha del pedido: reportes esperados, destinatarios, niveles de acceso, resguardo de datos sensibles, alertas y criterios de exito.",
-    questions: [
-      "Que reportes necesita Salud y con que nivel de detalle?",
-      "Quien puede ver datos nominales y quien solo datos agregados?",
-      "Que criterios indicarian que el operativo fue exitoso?",
+    id: "public-works-claims",
+    title: "Gestion de reclamos urbanos",
+    description:
+      "Para pedidos donde un area necesita ordenar reclamos, inspecciones, cuadrillas, prioridades y seguimiento ciudadano.",
+    projectName: "Gestion municipal de reclamos urbanos",
+    problem:
+      "Un area municipal solicita soporte a Modernizacion para ordenar la recepcion, priorizacion, derivacion y seguimiento de reclamos urbanos.",
+    institutionalRequest: {
+      templateId: "public-works-claims",
+      templateName: "Gestion de reclamos urbanos",
+      requestingArea: "Secretaria de Obras Publicas",
+      receivingArea: "Direccion de Modernizacion",
+      contactPerson: "Referente de Obras Publicas",
+      requestedAction: "Organizar la gestion de reclamos urbanos desde la recepcion hasta la resolucion y comunicacion del estado.",
+      targetPopulation: "Vecinos, inspectores, operadores y cuadrillas municipales",
+      urgency: "medium",
+    },
+    mediatorPrompt:
+      "El area solicitante necesita describir a un Mediador IA como gestiona reclamos urbanos. Guiar la conversacion para entender canales de ingreso, tipos de reclamo, zonas, prioridades, inspecciones, cuadrillas, estados, evidencias, comunicacion al vecino, indicadores y excepciones operativas.",
+    confirmationArea: "el area solicitante",
+    blocks: [
+      {
+        id: "channels",
+        title: "Ingreso del reclamo",
+        goal: "Entender por donde entra el pedido, que datos trae y quien lo registra.",
+        prompt:
+          "Mediador, ayudame a precisar como ingresan los reclamos urbanos: canales, datos minimos, responsable de registro, duplicados y evidencia inicial.",
+        questions: [
+          "Por que canales ingresan los reclamos?",
+          "Que datos minimos debe traer un reclamo para poder atenderse?",
+          "Como se detectan reclamos duplicados o incompletos?",
+        ],
+        summaryLabel: "Ingreso del reclamo",
+        pendingText: "Pendiente de definir canales, datos minimos y validaciones.",
+        keywords: ["canal", "reclamo", "vecino", "registro", "duplicado", "evidencia"],
+      },
+      {
+        id: "classification",
+        title: "Clasificacion y prioridad",
+        goal: "Definir tipos de reclamo, zonas, urgencias y criterios de priorizacion.",
+        prompt:
+          "Mediador, guiame para clasificar reclamos urbanos: tipos, zonas, criticidad, urgencias, criterios de prioridad y casos que requieren derivacion.",
+        questions: [
+          "Que tipos de reclamo se atienden y cuales se derivan?",
+          "Que criterios hacen que un reclamo sea urgente?",
+          "La zona, la escuela, hospital o transito cercano cambian la prioridad?",
+        ],
+        summaryLabel: "Clasificacion y prioridad",
+        pendingText: "Pendiente de acordar categorias, zonas y criterios de urgencia.",
+        keywords: ["tipo", "categoria", "prioridad", "urgente", "zona", "derivacion"],
+      },
+      {
+        id: "fieldwork",
+        title: "Inspeccion y cuadrillas",
+        goal: "Aclarar como se asignan inspecciones, tareas, recursos y confirmacion de trabajo.",
+        prompt:
+          "Mediador, conversemos sobre inspecciones y cuadrillas: asignacion, agenda, recursos, evidencia de visita, estados de trabajo y confirmacion de cierre.",
+        questions: [
+          "Quien inspecciona y quien ejecuta la tarea?",
+          "Como se agenda una cuadrilla y que recursos necesita?",
+          "Que evidencia confirma que el trabajo se hizo?",
+        ],
+        summaryLabel: "Inspeccion y cuadrillas",
+        pendingText: "Pendiente de definir asignacion, agenda, recursos y evidencia de cierre.",
+        keywords: ["inspeccion", "cuadrilla", "agenda", "recurso", "evidencia", "cierre"],
+      },
+      {
+        id: "tracking",
+        title: "Seguimiento ciudadano",
+        goal: "Definir estados, notificaciones, consultas y manejo de demoras o rechazos.",
+        prompt:
+          "Mediador, ayudame a describir el seguimiento ciudadano: estados, notificaciones, consultas, demoras, rechazos, reaperturas y responsables de comunicar.",
+        questions: [
+          "Que estados necesita ver el vecino?",
+          "Cuando y por que canal se notifica un cambio?",
+          "Que pasa si el reclamo se rechaza, demora o reabre?",
+        ],
+        summaryLabel: "Seguimiento ciudadano",
+        pendingText: "Pendiente de definir estados, notificaciones y excepciones.",
+        keywords: ["estado", "notificacion", "seguimiento", "demora", "rechazo", "reapertura"],
+      },
+      {
+        id: "metrics",
+        title: "Indicadores y control",
+        goal: "Precisar reportes, tiempos, tableros, responsables y criterios de exito.",
+        prompt:
+          "Mediador, cerremos la ficha con indicadores: tiempos de respuesta, backlog, reclamos por zona, responsables, reportes y criterios de exito.",
+        questions: [
+          "Que indicadores necesita la direccion para gestionar?",
+          "Que reportes o tableros deberian existir?",
+          "Que criterio indica que el proceso mejoro?",
+        ],
+        summaryLabel: "Indicadores y control",
+        pendingText: "Pendiente de definir reportes, metricas y criterios de mejora.",
+        keywords: ["indicador", "reporte", "tablero", "tiempo", "backlog", "mejora"],
+      },
     ],
   },
 ];
@@ -923,54 +1053,46 @@ function institutionalRequestContext(project: Pick<Project, "institutionalReques
   ].join("\n");
 }
 
-function isSchoolHealthSurveyProject(project: Pick<Project, "institutionalRequest">) {
-  return project.institutionalRequest?.templateId === "school-health-survey";
+function institutionalInterviewTemplateFor(project: Pick<Project, "institutionalRequest">) {
+  const templateId = project.institutionalRequest?.templateId;
+
+  return institutionalInterviewTemplates.find((template) => template.id === templateId);
 }
 
 function institutionalInterviewBlocksFor(project: Pick<Project, "institutionalRequest">) {
-  return isSchoolHealthSurveyProject(project) ? schoolHealthInterviewBlocks : [];
+  return institutionalInterviewTemplateFor(project)?.blocks ?? [];
 }
 
 function contributionMatchesKeywords(contribution: ElicitationContribution, keywords: string[]) {
-  const target = contribution.body.toLowerCase();
+  const target = contribution.body
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
   return keywords.some((keyword) => target.includes(keyword));
 }
 
 function buildInstitutionalRequestSummary(project: Project, room: ElicitationRoomState) {
+  const template = institutionalInterviewTemplateFor(project);
+
+  if (!template) {
+    return "";
+  }
+
   const request = project.institutionalRequest;
   const contributions = room.contributions.filter((contribution) => contribution.authorRole !== "mediator-ai");
   const latestInputs = contributions.slice(0, 6);
-  const objectiveInputs = contributions.filter((contribution) =>
-    contributionMatchesKeywords(contribution, ["objetivo", "problema", "detectar", "decision", "indicador"]),
-  );
-  const scopeInputs = contributions.filter((contribution) =>
-    contributionMatchesKeywords(contribution, ["escuela", "alumno", "curso", "edad", "grado", "poblacion"]),
-  );
-  const dataInputs = contributions.filter((contribution) =>
-    contributionMatchesKeywords(contribution, ["dato", "sanitario", "campo", "formulario", "autorizacion", "privacidad"]),
-  );
-  const operationInputs = contributions.filter((contribution) =>
-    contributionMatchesKeywords(contribution, ["responsable", "cronograma", "carga", "dispositivo", "conectividad", "jornada"]),
-  );
-  const reportInputs = contributions.filter((contribution) =>
-    contributionMatchesKeywords(contribution, ["reporte", "informe", "alerta", "resultado", "acceso", "exito"]),
-  );
-  const missingBlocks = schoolHealthInterviewBlocks
-    .filter((block) => {
-      const blockInputs =
-        block.id === "objective"
-          ? objectiveInputs
-          : block.id === "population"
-            ? scopeInputs
-            : block.id === "data"
-              ? dataInputs
-              : block.id === "operation"
-                ? operationInputs
-                : reportInputs;
-
-      return blockInputs.length === 0;
-    })
-    .map((block) => block.title);
+  const blockInputs = template.blocks.map((block) => ({
+    block,
+    inputs: contributions.filter((contribution) => contributionMatchesKeywords(contribution, block.keywords)),
+  }));
+  const missingBlocks = blockInputs
+    .filter((item) => item.inputs.length === 0)
+    .map((item) => item.block.title);
+  const synthesisLines = blockInputs.map(({ block, inputs }) => {
+    return `- ${block.summaryLabel}: ${inputs[0]?.body || block.pendingText}`;
+  });
+  const completedBlocks = template.blocks.length - missingBlocks.length;
+  const completionLabel = `${completedBlocks}/${template.blocks.length} bloques con algun aporte inicial`;
   const evidenceLines = latestInputs.map(
     (contribution) => `- ${contribution.authorName} (${contributionKindLabels[contribution.kind]}): ${contribution.body}`,
   );
@@ -986,11 +1108,8 @@ function buildInstitutionalRequestSummary(project: Project, room: ElicitationRoo
     `- **Urgencia:** ${request?.urgency || "medium"}`,
     "",
     "**Sintesis operativa**",
-    `- Objetivo sanitario: ${objectiveInputs[0]?.body || "Pendiente de precisar con Salud."}`,
-    `- Alcance escolar: ${scopeInputs[0]?.body || "Pendiente de definir escuelas, cursos y volumen."}`,
-    `- Datos a relevar: ${dataInputs[0]?.body || "Pendiente de separar datos necesarios, sensibles y opcionales."}`,
-    `- Operacion: ${operationInputs[0]?.body || "Pendiente de definir responsables, autorizaciones y cronograma."}`,
-    `- Reportes y privacidad: ${reportInputs[0]?.body || "Pendiente de acordar reportes, accesos y resguardo."}`,
+    `- Estado de completitud: ${completionLabel}.`,
+    ...synthesisLines,
     "",
     "**Evidencia conversada**",
     ...(evidenceLines.length > 0 ? evidenceLines : ["- Todavia no hay aportes de stakeholders registrados."]),
@@ -998,7 +1117,7 @@ function buildInstitutionalRequestSummary(project: Project, room: ElicitationRoo
     "**Pendientes para cerrar la entrevista**",
     ...(missingBlocks.length > 0
       ? missingBlocks.map((block) => `- Completar bloque: ${block}.`)
-      : ["- Los bloques principales ya tienen algun aporte inicial. Revisar calidad y confirmar con Salud."]),
+      : [`- Los bloques principales ya tienen algun aporte inicial. Revisar calidad y confirmar con ${template.confirmationArea}.`]),
   ].join("\n");
 }
 
@@ -1399,14 +1518,20 @@ export default function RequixenWorkspace() {
     }));
   }
 
-  function applySchoolHealthSurveyTemplate() {
+  function applyInstitutionalTemplate(templateId: string) {
+    const template = institutionalInterviewTemplates.find((item) => item.id === templateId);
+
+    if (!template) {
+      return;
+    }
+
     setDraft((current) => ({
       ...current,
-      name: current.name || schoolHealthSurveyTemplate.projectName,
-      problem: current.problem || schoolHealthSurveyTemplate.problem,
+      name: current.name || template.projectName,
+      problem: current.problem || template.problem,
       institutionalRequest: {
-        ...schoolHealthSurveyTemplate.institutionalRequest,
-        contactPerson: current.institutionalRequest.contactPerson || schoolHealthSurveyTemplate.institutionalRequest.contactPerson,
+        ...template.institutionalRequest,
+        contactPerson: current.institutionalRequest.contactPerson || template.institutionalRequest.contactPerson,
       },
       messages:
         current.messages.length > 1
@@ -1416,7 +1541,7 @@ export default function RequixenWorkspace() {
               {
                 id: `mediator-template-${Date.now()}`,
                 role: "mediator",
-                body: schoolHealthSurveyTemplate.mediatorPrompt,
+                body: template.mediatorPrompt,
                 timestamp: nowTime(),
               },
             ],
@@ -1771,7 +1896,7 @@ export default function RequixenWorkspace() {
           onRoleChange={switchActiveRole}
           onChange={handleDraftChange}
           onInstitutionalRequestChange={handleDraftInstitutionalRequestChange}
-          onApplySchoolHealthSurveyTemplate={applySchoolHealthSurveyTemplate}
+          onApplyInstitutionalTemplate={applyInstitutionalTemplate}
           onParticipantsChange={handleDraftParticipantsChange}
           onFiles={handleFiles}
           onSend={sendDraftMessage}
@@ -2696,7 +2821,7 @@ function CreateProjectView({
   onRoleChange,
   onChange,
   onInstitutionalRequestChange,
-  onApplySchoolHealthSurveyTemplate,
+  onApplyInstitutionalTemplate,
   onParticipantsChange,
   onFiles,
   onSend,
@@ -2714,7 +2839,7 @@ function CreateProjectView({
   onRoleChange: (role: UserRole) => void;
   onChange: (field: keyof Pick<DraftProject, "name" | "areaId" | "problem">, value: string) => void;
   onInstitutionalRequestChange: (field: keyof InstitutionalRequest, value: string) => void;
-  onApplySchoolHealthSurveyTemplate: () => void;
+  onApplyInstitutionalTemplate: (templateId: string) => void;
   onParticipantsChange: (participants: ProjectParticipant[]) => void | Promise<void>;
   onFiles: (files: FileList | null) => void | Promise<void>;
   onSend: () => void;
@@ -2803,7 +2928,8 @@ function CreateProjectView({
         <InstitutionalRequestIntake
           request={draft.institutionalRequest}
           onChange={onInstitutionalRequestChange}
-          onApplyTemplate={onApplySchoolHealthSurveyTemplate}
+          templates={institutionalInterviewTemplates}
+          onApplyTemplate={onApplyInstitutionalTemplate}
         />
       );
     }
@@ -3100,30 +3226,50 @@ function TypeformTextInput({
 function InstitutionalRequestIntake({
   request,
   onChange,
+  templates,
   onApplyTemplate,
 }: {
   request: InstitutionalRequest;
   onChange: (field: keyof InstitutionalRequest, value: string) => void;
-  onApplyTemplate: () => void;
+  templates: InstitutionalInterviewTemplate[];
+  onApplyTemplate: (templateId: string) => void;
 }) {
   return (
     <div className="grid gap-5">
       <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-950">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase text-emerald-700">Plantilla sugerida</p>
-            <h2 className="mt-1 text-lg font-semibold">Relevamiento sanitario escolar</h2>
-            <p className="mt-2 text-sm leading-6">
-              Para el caso donde Salud solicita a Modernizacion soporte para relevar informacion sanitaria de alumnos.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onApplyTemplate}
-            className="h-9 rounded-md bg-emerald-900 px-3 text-sm font-semibold text-white hover:bg-emerald-800"
-          >
-            Usar plantilla
-          </button>
+        <p className="text-xs font-semibold uppercase text-emerald-700">Plantillas institucionales</p>
+        <h2 className="mt-1 text-lg font-semibold">Elegir guia inicial</h2>
+        <p className="mt-2 text-sm leading-6">
+          Cada plantilla adapta la entrevista del Mediador al tipo de pedido, sin cerrar la herramienta a un unico dominio.
+        </p>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {templates.map((template) => {
+            const isActive = request.templateId === template.id;
+
+            return (
+              <article
+                key={template.id}
+                className={`rounded-lg border bg-white p-4 ${
+                  isActive ? "border-emerald-700 ring-2 ring-emerald-200" : "border-emerald-100"
+                }`}
+              >
+                <div className="flex h-full flex-col gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-emerald-950">{template.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-emerald-800">{template.description}</p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={`Usar plantilla ${template.title}`}
+                    onClick={() => onApplyTemplate(template.id)}
+                    className="mt-auto h-9 self-start rounded-md bg-emerald-900 px-3 text-sm font-semibold text-white hover:bg-emerald-800"
+                  >
+                    Usar plantilla
+                  </button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </div>
 
@@ -5264,8 +5410,9 @@ function StakeholderElicitationAssistant({
   const visibleMessages = isContextMode ? contextMessages : activeSession.messages;
   const visibleAttachments = activeSession.attachments;
   const composerInput = isContextMode ? contextInput : input;
+  const guidedInterviewTemplate = institutionalInterviewTemplateFor(project);
   const guidedInterviewBlocks = institutionalInterviewBlocksFor(project);
-  const structuredRequestSummary = isSchoolHealthSurveyProject(project)
+  const structuredRequestSummary = guidedInterviewTemplate
     ? buildInstitutionalRequestSummary(project, room)
     : "";
   const pendingClarifications = isStakeholder
@@ -5603,6 +5750,7 @@ function StakeholderElicitationAssistant({
             )}
             {!isContextMode && guidedInterviewBlocks.length > 0 && !isAnalyst && (
               <InstitutionalGuidedInterviewPanel
+                template={guidedInterviewTemplate}
                 blocks={guidedInterviewBlocks}
                 summary={structuredRequestSummary}
                 onUsePrompt={setComposerInput}
@@ -5820,10 +5968,12 @@ function StakeholderElicitationAssistant({
 }
 
 function InstitutionalGuidedInterviewPanel({
+  template,
   blocks,
   summary,
   onUsePrompt,
 }: {
+  template?: InstitutionalInterviewTemplate;
   blocks: GuidedInterviewBlock[];
   summary: string;
   onUsePrompt: (value: string) => void;
@@ -5840,9 +5990,9 @@ function InstitutionalGuidedInterviewPanel({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase text-emerald-700">Entrevista guiada</p>
-          <h3 className="mt-1 text-lg font-semibold">Relevamiento sanitario escolar</h3>
+          <h3 className="mt-1 text-lg font-semibold">{template?.title || "Entrevista institucional"}</h3>
           <p className="mt-2 max-w-2xl text-sm leading-6">
-            Usa estos bloques para conversar con Salud en lenguaje operativo. Cada bloque deja insumos para la ficha de solicitud relevada.
+            Usa estos bloques para conversar con el area solicitante en lenguaje operativo. Cada bloque deja insumos para la ficha de solicitud relevada.
           </p>
         </div>
         <button
@@ -5944,7 +6094,8 @@ function AnalystGuidedElicitationRoom({
   const clarificationDrafts = clarifications.filter((clarification) => clarification.status === "draft");
   const sentClarifications = clarifications.filter((clarification) => clarification.status !== "draft");
   const stakeholderOptions = project.participants.filter((participant) => participant.role === "stakeholder");
-  const structuredRequestSummary = isSchoolHealthSurveyProject(project)
+  const guidedInterviewTemplate = institutionalInterviewTemplateFor(project);
+  const structuredRequestSummary = guidedInterviewTemplate
     ? buildInstitutionalRequestSummary(project, room)
     : "";
   const structuredEvidence = room.contributions.filter((contribution) => contribution.authorRole !== "mediator-ai").slice(0, 8);
@@ -6043,15 +6194,15 @@ function AnalystGuidedElicitationRoom({
                       type="button"
                       onClick={() =>
                         onCreateRequirementCandidate(structuredEvidence, {
-                          title: "Solicitud relevada - relevamiento sanitario escolar",
+                          title: `Solicitud relevada - ${guidedInterviewTemplate?.title || "pedido institucional"}`,
                           type: "Structured elicitation brief",
                           body: structuredRequestSummary,
                           source:
                             structuredEvidence.length > 0
                               ? sourceSummaryFromContributions(structuredEvidence)
-                              : "Solicitud institucional inicial y plantilla de relevamiento sanitario escolar.",
+                              : `Solicitud institucional inicial y plantilla ${guidedInterviewTemplate?.title || "institucional"}.`,
                           assumptions:
-                            "La ficha resume la conversacion disponible y debe ser confirmada por la Secretaria de Salud antes de aprobar requisitos.",
+                            `La ficha resume la conversacion disponible y debe ser confirmada por ${guidedInterviewTemplate?.confirmationArea || "el area solicitante"} antes de aprobar requisitos.`,
                           confidence: structuredEvidence.length > 0 ? averageContributionConfidence(structuredEvidence) : 0.68,
                         })
                       }
@@ -6878,8 +7029,8 @@ function elicitationWelcomeMessage(project: Project, user: User) {
           "La conversacion parte de esta solicitud institucional:",
           institutionalContext,
           "",
-          isSchoolHealthSurveyProject(project)
-            ? "Voy a conducir una entrevista guiada para relevar objetivo sanitario, alcance escolar, datos, autorizaciones, operacion, reportes, privacidad y criterios de exito antes de convertir la necesidad en requisitos."
+          institutionalInterviewTemplateFor(project)
+            ? `Voy a conducir una entrevista guiada con la plantilla "${institutionalInterviewTemplateFor(project)?.title}" para relevar la necesidad operativa antes de convertirla en requisitos.`
             : "Voy a ayudarte a describir la necesidad en terminos operativos antes de convertirla en requisitos.",
           "",
         ]

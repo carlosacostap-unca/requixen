@@ -34,7 +34,8 @@ test("guia la solicitud de relevamiento sanitario escolar hasta la ficha relevad
   await expect(page.getByRole("heading", { name: "Mesa de trabajo del analista RE" })).toBeVisible();
   await page.getByRole("button", { name: "Crear proyecto" }).click();
 
-  await page.getByRole("button", { name: "Usar plantilla" }).click();
+  await expect(page.getByRole("heading", { name: "Gestion de reclamos urbanos" })).toBeVisible();
+  await page.getByRole("button", { name: "Usar plantilla Relevamiento sanitario escolar" }).click();
   await expect(page.getByRole("textbox", { name: "Area solicitante" })).toHaveValue("Secretaria de Salud");
   await expect(page.getByRole("textbox", { name: "Poblacion objetivo" })).toHaveValue("Alumnos de escuelas municipales");
 
@@ -81,6 +82,44 @@ test("guia la solicitud de relevamiento sanitario escolar hasta la ficha relevad
       { exact: true },
     ),
   ).toBeVisible();
+});
+
+test("permite iniciar otro caso institucional con bloques propios", async ({ page }) => {
+  await mockRequixenApi(page);
+
+  await page.goto("/");
+  await page.getByPlaceholder("Email").fill("analyst@requixen.local");
+  await page.getByPlaceholder("Password").fill("demo-password");
+  await page.getByRole("button", { name: "Ingresar" }).click();
+
+  await expect(page.getByRole("heading", { name: "Mesa de trabajo del analista RE" })).toBeVisible();
+  await page.getByRole("button", { name: "Crear proyecto" }).click();
+
+  await page.getByRole("button", { name: "Usar plantilla Gestion de reclamos urbanos" }).click();
+  await expect(page.getByRole("textbox", { name: "Area solicitante" })).toHaveValue("Secretaria de Obras Publicas");
+  await expect(page.getByRole("textbox", { name: "Poblacion objetivo" })).toHaveValue(
+    "Vecinos, inspectores, operadores y cuadrillas municipales",
+  );
+
+  await page.getByRole("button", { name: "Siguiente" }).click();
+  await expect(page.getByRole("textbox", { name: "Nombre del proyecto" })).toHaveValue(
+    "Gestion municipal de reclamos urbanos",
+  );
+
+  await page.getByRole("button", { name: "Siguiente" }).click();
+  await page.getByLabel("Area").selectOption("area-modernizacion");
+  await page.getByRole("button", { name: "Siguiente" }).click();
+  await page.getByRole("button", { name: "Siguiente" }).click();
+  await page.getByRole("button", { name: "Siguiente" }).click();
+  await page.getByRole("button", { name: "Iniciar workspace" }).click();
+
+  await expect(page.getByRole("heading", { name: "Gestion municipal de reclamos urbanos" })).toBeVisible();
+  await page.getByRole("button", { name: "Entrar a la fase" }).click();
+
+  await expect(page.getByRole("heading", { name: "Gestion de reclamos urbanos" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Ingreso del reclamo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Inspeccion y cuadrillas" })).toBeVisible();
+  await expect(page.getByText("Estado de completitud: 0/5 bloques con algun aporte inicial.")).toBeVisible();
 });
 
 async function mockRequixenApi(page: Page) {

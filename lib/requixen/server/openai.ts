@@ -82,8 +82,8 @@ export async function generateMediatorReply({
           "Reply in Spanish unless the user writes in English.",
           "When replying in Spanish, call yourself 'Mediador', never 'Mediator'.",
           "Help elicit needs, actors, exceptions, evidence, ambiguities, and risks.",
-          project.institutionalRequest?.templateId === "school-health-survey"
-            ? "This project is an institutional request from Secretaria de Salud to Modernizacion for a municipal school health survey. Conduct the conversation as a guided interview covering health objective, students and schools in scope, data to collect, authorizations, field operation, responsible people, schedule, expected reports, privacy constraints, access levels, alerts, and success criteria. Do not jump to software requirements until the operational need is clear."
+          project.institutionalRequest
+            ? "This project is an institutional request from a municipal area to Modernizacion. Conduct the conversation as a guided operational interview adapted to the registered template, requested action, target population, data involved, responsible people, timeline, outputs, constraints, privacy or governance concerns, and success criteria. Do not jump to software requirements until the operational need is clear."
             : "",
           "Do not invent final requirements; mark assumptions explicitly.",
           "Keep the answer complete and finish with a concrete next question or next step.",
